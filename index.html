@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physical Health Signals in AI Coach Conversations</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<style>
+  :root {
+    --bg: #fafafa; --card: #fff; --border: #e2e2e2; --text: #1a1a1a;
+    --muted: #666; --accent: #2563eb; --accent-light: #dbeafe;
+    --green: #16a34a; --green-light: #dcfce7;
+    --amber: #d97706; --amber-light: #fef3c7;
+    --red: #dc2626; --red-light: #fee2e2;
+    --purple: #7c3aed; --purple-light: #ede9fe;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Header */
+  .header { margin-bottom: 48px; }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .header .meta { color: var(--muted); font-size: 14px; line-height: 1.8; }
+  .header .meta span { display: inline-block; margin-right: 20px; }
+
+  /* Methodology box */
+  .methodology { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px 24px; margin-bottom: 40px; font-size: 13px; color: #475569; }
+  .methodology h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .methodology ul { margin: 8px 0 0 20px; }
+  .methodology li { margin-bottom: 4px; }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+  .kpi .number { font-size: 32px; font-weight: 700; color: var(--accent); }
+  .kpi .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* Section */
+  .section { margin-bottom: 48px; }
+  .section h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; padding-bottom: 8px; border-bottom: 2px solid var(--text); }
+  .section h2 .section-num { color: var(--muted); font-weight: 400; }
+  .section-desc { color: var(--muted); font-size: 14px; margin-bottom: 20px; margin-top: 4px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+  th { text-align: left; padding: 10px 12px; background: #f8fafc; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #f8fafc; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar-cell { width: 120px; }
+  .bar-bg { background: #f1f5f9; border-radius: 4px; height: 8px; width: 100%; }
+  .bar-fill { border-radius: 4px; height: 8px; }
+  .bar-fill.blue { background: var(--accent); }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.amber { background: var(--amber); }
+  .bar-fill.red { background: var(--red); }
+  .bar-fill.purple { background: var(--purple); }
+
+  /* Quote cards */
+  .quote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .quote { background: #f8fafc; border-left: 3px solid var(--accent); padding: 12px 16px; font-size: 13px; font-style: italic; color: #334155; border-radius: 0 6px 6px 0; }
+  .quote .tag { display: inline-block; font-size: 11px; font-style: normal; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; }
+  .tag.alcohol { background: var(--amber-light); color: var(--amber); }
+  .tag.pain { background: var(--red-light); color: var(--red); }
+  .tag.cancer { background: var(--purple-light); color: var(--purple); }
+  .tag.weight { background: var(--green-light); color: var(--green); }
+  .tag.pregnancy { background: #fce7f3; color: #be185d; }
+  .tag.substance { background: var(--amber-light); color: var(--amber); }
+  .tag.sleep { background: var(--accent-light); color: var(--accent); }
+  .tag.exercise { background: var(--green-light); color: var(--green); }
+  .tag.heart { background: var(--red-light); color: var(--red); }
+  .tag.diabetes { background: var(--purple-light); color: var(--purple); }
+  .tag.disability { background: #f1f5f9; color: #475569; }
+  .tag.workplace { background: #fef3c7; color: #92400e; }
+  .tag.financial { background: #fee2e2; color: #991b1b; }
+
+  /* Chart containers */
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 20px 0; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+  .chart-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .chart-card .chart-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  /* Callout boxes */
+  .callout { border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-size: 14px; }
+  .callout.note { background: var(--accent-light); border: 1px solid #93c5fd; }
+  .callout.warn { background: var(--amber-light); border: 1px solid #fbbf24; }
+  .callout h4 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+
+  /* Combo pills */
+  .combo-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .combo-pill { display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 13px; }
+  .combo-pill .combo-count { font-weight: 700; color: var(--accent); }
+
+  /* Footer */
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 768px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .chart-row, .quote-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="auth-gate" style="display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg);">
+  <div style="text-align:center; max-width:360px; padding:40px;">
+    <h2 style="font-size:20px; font-weight:700; margin-bottom:8px;">Physical Health Signals Report</h2>
+    <p style="color:var(--muted); font-size:14px; margin-bottom:24px;">This report contains sensitive data. Please enter the password to continue.</p>
+    <input id="pw-input" type="password" placeholder="Password" autofocus
+      style="width:100%; padding:12px 16px; border:1px solid var(--border); border-radius:8px; font-size:15px; margin-bottom:12px; outline:none;"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <button onclick="checkPw()"
+      style="width:100%; padding:12px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
+      View Report
+    </button>
+    <p id="pw-error" style="color:var(--red); font-size:13px; margin-top:10px; display:none;">Incorrect password.</p>
+  </div>
+</div>
+
+<div id="report-content" class="container" style="display:none;">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>Physical Health Signals in AI Coach Conversations</h1>
+  <div class="meta">
+    <span>March 5, 2026</span>
+    <span>Author: Val Young</span>
+    <span>Prepared for: Mark</span>
+  </div>
+</div>
+
+<!-- METHODOLOGY -->
+<div class="methodology">
+  <h3>Methodology</h3>
+  <ul>
+    <li><strong>Dataset:</strong> 6,893 unique users, 124,121 human-AI message pairs, 19,646 conversations. Date range: Sep 30, 2025 -- Feb 27, 2026 (~6 months).</li>
+    <li><strong>Classification method:</strong> Contextual keyword matching with exclusion filters. Each category uses specific medical/behavioral terms with false-positive exclusions (e.g., "drinking" excludes "drinking water/coffee/tea"; "high" excludes "high anxiety/stress"). Not simple keyword search.</li>
+    <li><strong>False positive rates:</strong> Estimated at 0-5% per category via 20-sample manual review. Categories using specific medical terminology (cancer, diabetes, opioids) have near-zero FP rates. Substance categories (alcohol ~5%, cannabis ~5%) have the highest.</li>
+    <li><strong>Survivorship bias note:</strong> Users with more sessions produce more text, creating more keyword matches. Correlations between physical health mentions and session count may partly reflect this. This report does not claim causal relationships.</li>
+    <li><strong>Scope:</strong> This is exploratory analysis of what users are discussing. It does not evaluate bot performance or prescribe product changes.</li>
+  </ul>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="number">936</div>
+    <div class="label">Users mentioning physical health<br>(13.6% of 6,893)</div>
+  </div>
+  <div class="kpi">
+    <div class="number">16</div>
+    <div class="label">Categories identified<br>(contextual matching)</div>
+  </div>
+  <div class="kpi">
+    <div class="number">279</div>
+    <div class="label">Users in 2+ categories<br>(multi-condition)</div>
+  </div>
+  <div class="kpi">
+    <div class="number">0-5%</div>
+    <div class="label">Est. false positive rate<br>(per category)</div>
+  </div>
+</div>
+
+<!-- SECTION 1: CATEGORY BREAKDOWN -->
+<div class="section">
+  <h2><span class="section-num">01</span> Category Breakdown</h2>
+  <p class="section-desc">Users mentioning each physical health topic. Categories are not mutually exclusive -- a user can appear in multiple.</p>
+
+  <table>
+    <thead>
+      <tr><th>Category</th><th class="num">Users</th><th class="num">% of Total</th><th class="num">Msg Pairs</th><th class="num">FP Rate</th><th class="bar-cell">Prevalence</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Exercise / Fitness</td><td class="num">319</td><td class="num">4.63%</td><td class="num">796</td><td class="num">~2%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill green" style="width:51%"></div></div></td></tr>
+      <tr><td>Alcohol</td><td class="num">229</td><td class="num">3.32%</td><td class="num">555</td><td class="num">~5%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill amber" style="width:37%"></div></div></td></tr>
+      <tr><td>Chronic Pain</td><td class="num">169</td><td class="num">2.45%</td><td class="num">324</td><td class="num">~2%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill red" style="width:27%"></div></div></td></tr>
+      <tr><td>Surgery / Hospitalization</td><td class="num">109</td><td class="num">1.58%</td><td class="num">185</td><td class="num">~1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill blue" style="width:17%"></div></div></td></tr>
+      <tr><td>Pregnancy / Reproductive</td><td class="num">104</td><td class="num">1.51%</td><td class="num">156</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill purple" style="width:17%"></div></div></td></tr>
+      <tr><td>Weight / Body</td><td class="num">95</td><td class="num">1.38%</td><td class="num">247</td><td class="num">~2%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill green" style="width:15%"></div></div></td></tr>
+      <tr><td>Cannabis</td><td class="num">79</td><td class="num">1.15%</td><td class="num">115</td><td class="num">~5%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill amber" style="width:13%"></div></div></td></tr>
+      <tr><td>Cancer</td><td class="num">69</td><td class="num">1.00%</td><td class="num">125</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill red" style="width:11%"></div></div></td></tr>
+      <tr><td>Sleep Disorders</td><td class="num">67</td><td class="num">0.97%</td><td class="num">126</td><td class="num">~2%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill blue" style="width:11%"></div></div></td></tr>
+      <tr><td>Disability</td><td class="num">63</td><td class="num">0.91%</td><td class="num">101</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill purple" style="width:10%"></div></div></td></tr>
+      <tr><td>Heart / Cardiovascular</td><td class="num">55</td><td class="num">0.80%</td><td class="num">76</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill red" style="width:9%"></div></div></td></tr>
+      <tr><td>Stimulants (prescribed)</td><td class="num">37</td><td class="num">0.54%</td><td class="num">91</td><td class="num">~2%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill blue" style="width:6%"></div></div></td></tr>
+      <tr><td>Diabetes</td><td class="num">35</td><td class="num">0.51%</td><td class="num">112</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill purple" style="width:6%"></div></div></td></tr>
+      <tr><td>Benzos</td><td class="num">31</td><td class="num">0.45%</td><td class="num">51</td><td class="num">~3%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill amber" style="width:5%"></div></div></td></tr>
+      <tr><td>Opioids</td><td class="num">17</td><td class="num">0.25%</td><td class="num">23</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill red" style="width:3%"></div></div></td></tr>
+      <tr><td>Stimulants (illicit)</td><td class="num">11</td><td class="num">0.16%</td><td class="num">19</td><td class="num"><1%</td><td class="bar-cell"><div class="bar-bg"><div class="bar-fill red" style="width:2%"></div></div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SECTION 2: SUBSTANCE USE DETAIL -->
+<div class="section">
+  <h2><span class="section-num">02</span> Substance Use Detail</h2>
+  <p class="section-desc">Breakdown of substance mentions. "Self vs Other" indicates whether the user is discussing their own use or someone else's (partner, parent, child). Estimated from 20-sample review per category.</p>
+
+  <table>
+    <thead>
+      <tr><th>Substance</th><th class="num">Users</th><th class="num">% of Total</th><th class="num">Self-Use Est.</th><th class="num">Other's Use Est.</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Alcohol</td><td class="num">229</td><td class="num">3.32%</td><td class="num">~90%</td><td class="num">~10%</td></tr>
+      <tr><td>Cannabis</td><td class="num">79</td><td class="num">1.15%</td><td class="num">~85%</td><td class="num">~15%</td></tr>
+      <tr><td>Stimulants (prescribed ADHD meds)</td><td class="num">37</td><td class="num">0.54%</td><td class="num">~95%</td><td class="num">~5%</td></tr>
+      <tr><td>Benzos</td><td class="num">31</td><td class="num">0.45%</td><td class="num">~90%</td><td class="num">~10%</td></tr>
+      <tr><td>Opioids</td><td class="num">17</td><td class="num">0.25%</td><td class="num">~80%</td><td class="num">~20%</td></tr>
+      <tr><td>Stimulants (illicit: cocaine, meth)</td><td class="num">11</td><td class="num">0.16%</td><td class="num">~80%</td><td class="num">~20%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout note">
+    <h4>Note on self-vs-other estimates</h4>
+    Self/other rates are based on 20-sample heuristic review per category, not full classification. Opioids and illicit stimulants have higher "other" rates because users discuss family members' addiction.
+  </div>
+</div>
+
+<!-- SECTION 3: WHAT USERS SAY -->
+<div class="section">
+  <h2><span class="section-num">03</span> What Users Say (Verbatim Samples)</h2>
+  <p class="section-desc">Representative user messages from each category. These are direct quotes from de-identified conversation data, truncated for length.</p>
+
+  <h4 style="margin: 20px 0 8px; font-size: 15px;">Substance Use</h4>
+  <div class="quote-grid">
+    <div class="quote"><div class="tag alcohol">Alcohol</div><br>"I'm at work and am craving to get a drink later. I've been sober for 7 days and haven't had a craving this bad since"</div>
+    <div class="quote"><div class="tag alcohol">Alcohol</div><br>"I feel guilty and ashamed of how my alcoholism has affected my marriage. I don't want my wife to divorce me. So I quit drinking a few days ago and planning on attending an AA meeting on Wednesday."</div>
+    <div class="quote"><div class="tag alcohol">Alcohol</div><br>"Not a lot. I mean I've been using drinking as a coping mechanism and I'm aware it's not good but I've tried meds and stuff and it just doesn't work"</div>
+    <div class="quote"><div class="tag substance">Benzos</div><br>"Not yet but I've been doing Xanax for 12 years and I expect withdrawal symptoms will kick in soon"</div>
+  </div>
+
+  <h4 style="margin: 20px 0 8px; font-size: 15px;">Physical Conditions</h4>
+  <div class="quote-grid">
+    <div class="quote"><div class="tag cancer">Cancer</div><br>"Since I was diagnosed with Stage IV cancer I felt everything was going well mentally. Turns out I'm not."</div>
+    <div class="quote"><div class="tag pain">Chronic Pain</div><br>"Physical therapy evaluation and therapy massage. Both should be good and get me out. Had to force a walk this morning. Just want to feel normal again. That's controlling my anxiety."</div>
+    <div class="quote"><div class="tag weight">Weight</div><br>"Freedom from pressure, which leads to anxiety which leads to weight gain which leads to fear, which leads to why I'm here communicating with AI trying not to go crazy"</div>
+    <div class="quote"><div class="tag heart">Heart</div><br>"I feel overwhelmed. My blood test results are abnormal in certain things like liver and cholesterol and triglycerides"</div>
+    <div class="quote"><div class="tag pregnancy">Pregnancy</div><br>"I'm 4 weeks postpartum and I have postpartum rage"</div>
+    <div class="quote"><div class="tag sleep">Sleep</div><br>"Past 5 years my antidepressants give me many side effects including trouble sleeping"</div>
+    <div class="quote"><div class="tag diabetes">Diabetes</div><br>"I doubt any of the people around me are aware of my anxiety, and I am finding that a lot of people aren't even aware of my diabetes"</div>
+    <div class="quote"><div class="tag disability">Disability</div><br>"I'm on disability and can't afford to take care of myself at all so I'm scared of dying homeless"</div>
+  </div>
+
+  <h4 style="margin: 20px 0 8px; font-size: 15px;">Early Warning Signals</h4>
+  <div class="quote-grid">
+    <div class="quote"><div class="tag financial">Med Non-Compliance</div><br>"All of this seems impossible but I wonder if it's because I had to cold turkey off all my medication including my antidepressant"</div>
+    <div class="quote"><div class="tag financial">Avoiding Care</div><br>"It's really financially. I can't afford to see multiple doctors on my own anymore. So it's either I do it within myself or I don't do it at all."</div>
+    <div class="quote"><div class="tag workplace">Work Impact</div><br>"I'm under medical leave of absence. How do I request my counselor's clinical notes? My company's insurer needs that."</div>
+    <div class="quote"><div class="tag financial">ER Utilization</div><br>"I'm at the emergency room now. My caregiver called 911 because she said I had a seizure which I've never had before."</div>
+  </div>
+</div>
+
+<!-- SECTION 4: MULTI-CATEGORY / COMORBIDITY -->
+<div class="section">
+  <h2><span class="section-num">04</span> Multi-Category Overlap</h2>
+  <p class="section-desc">How many physical health categories each user falls into. Users in 2+ categories are discussing multiple physical health topics in their conversations.</p>
+
+  <div class="chart-row">
+    <div class="chart-card">
+      <h4>Users by Number of Categories</h4>
+      <canvas id="multiCatChart" height="200"></canvas>
+      <p class="chart-note">936 total users with physical health mentions. 70% mention a single category. 30% mention 2 or more.</p>
+    </div>
+    <div class="chart-card">
+      <h4>Most Common Category Pairs</h4>
+      <table style="font-size: 13px; margin-bottom: 0;">
+        <thead><tr><th>Combination</th><th class="num">Users</th></tr></thead>
+        <tbody>
+          <tr><td>Alcohol + Exercise/Fitness</td><td class="num">77</td></tr>
+          <tr><td>Chronic Pain + Exercise/Fitness</td><td class="num">42</td></tr>
+          <tr><td>Alcohol + Chronic Pain</td><td class="num">36</td></tr>
+          <tr><td>Chronic Pain + Surgery/Hosp.</td><td class="num">34</td></tr>
+          <tr><td>Alcohol + Cannabis</td><td class="num">33</td></tr>
+          <tr><td>Exercise/Fitness + Weight/Body</td><td class="num">32</td></tr>
+          <tr><td>Exercise/Fitness + Sleep Disorders</td><td class="num">28</td></tr>
+          <tr><td>Alcohol + Surgery/Hosp.</td><td class="num">25</td></tr>
+          <tr><td>Exercise/Fitness + Surgery/Hosp.</td><td class="num">24</td></tr>
+          <tr><td>Alcohol + Weight/Body</td><td class="num">22</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: EMOTIONAL COMORBIDITY -->
+<div class="section">
+  <h2><span class="section-num">05</span> Emotional Co-occurrence</h2>
+  <p class="section-desc">How often physical health categories co-occur with emotional themes, expressed as lift (observed / expected if independent). Lift > 1.0 means the combination appears more often than chance. All lifts are based on keyword co-occurrence within the same user's messages.</p>
+
+  <table>
+    <thead>
+      <tr><th>Category</th><th class="num">+ Anxiety<br>(lift)</th><th class="num">+ Depression<br>(lift)</th><th class="num">+ Shame<br>(lift)</th><th class="num">+ Exhaustion<br>(lift)</th><th class="num">+ Anger<br>(lift)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Opioids (n=17)</td><td class="num">2.17</td><td class="num">2.36</td><td class="num"><strong>4.68</strong></td><td class="num">2.44</td><td class="num">2.12</td></tr>
+      <tr><td>Benzos (n=31)</td><td class="num"><strong>2.50</strong></td><td class="num">2.08</td><td class="num">3.42</td><td class="num">2.61</td><td class="num">1.89</td></tr>
+      <tr><td>Sleep Disorders (n=67)</td><td class="num">2.21</td><td class="num">2.14</td><td class="num">3.10</td><td class="num"><strong>3.04</strong></td><td class="num">1.95</td></tr>
+      <tr><td>Disability (n=63)</td><td class="num">1.98</td><td class="num">2.05</td><td class="num">3.28</td><td class="num">2.52</td><td class="num">2.30</td></tr>
+      <tr><td>Cancer (n=69)</td><td class="num">1.82</td><td class="num">1.94</td><td class="num">3.05</td><td class="num">2.38</td><td class="num">1.76</td></tr>
+      <tr><td>Heart/Cardio (n=55)</td><td class="num">2.10</td><td class="num">2.25</td><td class="num">3.51</td><td class="num">2.67</td><td class="num">2.18</td></tr>
+      <tr><td>Diabetes (n=35)</td><td class="num">2.05</td><td class="num">1.88</td><td class="num">3.15</td><td class="num">2.30</td><td class="num">1.72</td></tr>
+      <tr><td>Chronic Pain (n=169)</td><td class="num">2.02</td><td class="num">1.95</td><td class="num">3.20</td><td class="num">2.55</td><td class="num">2.01</td></tr>
+      <tr><td>Alcohol (n=229)</td><td class="num">1.95</td><td class="num">1.90</td><td class="num">3.35</td><td class="num">2.10</td><td class="num">1.88</td></tr>
+      <tr><td>Weight/Body (n=95)</td><td class="num">1.85</td><td class="num">1.78</td><td class="num">3.48</td><td class="num">2.15</td><td class="num">1.65</td></tr>
+      <tr><td>Pregnancy (n=104)</td><td class="num">1.72</td><td class="num">1.65</td><td class="num">2.80</td><td class="num">2.20</td><td class="num">1.92</td></tr>
+      <tr><td>Exercise (n=319)</td><td class="num">1.68</td><td class="num">1.55</td><td class="num">2.45</td><td class="num">2.05</td><td class="num">1.52</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout note">
+    <h4>Reading this table</h4>
+    A lift of 3.48 for Weight + Shame means users who mention weight topics are 3.48x more likely to also express shame compared to the general population. Sample sizes (n) are noted -- smaller categories have less stable lift values. Opioids (n=17) and benzos (n=31) have the most elevated emotional profiles but the smallest samples.
+  </div>
+</div>
+
+<!-- SECTION 6: WHAT THE BOT DOES -->
+<div class="section">
+  <h2><span class="section-num">06</span> Current Bot Response Patterns</h2>
+  <p class="section-desc">Based on sampled bot responses across physical health and substance conversations. These are observations of current behavior, not recommendations.</p>
+
+  <table>
+    <thead>
+      <tr><th>Behavior</th><th class="num">Estimated Rate</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Empathic validation (acknowledges the topic)</td><td class="num">~50%</td><td>Standard across all categories</td></tr>
+      <tr><td>Suggests professional/medical help</td><td class="num">~15%</td><td>Generic -- "talk to a professional"</td></tr>
+      <tr><td>Mentions specific resources (AA/NA, SAMHSA, 988)</td><td class="num">~1%</td><td>Near zero outside of crisis triggers</td></tr>
+      <tr><td>Mentions medication-assisted treatment (MAT)</td><td class="num">0%</td><td>Not observed in any sampled response</td></tr>
+      <tr><td>Includes medical disclaimer ("I'm not a doctor")</td><td class="num">~0.04%</td><td>6 out of 15,187 total conversations</td></tr>
+      <tr><td>Surfaces health plan benefits or programs</td><td class="num">0%</td><td>Not a current capability</td></tr>
+      <tr><td>Directs to SonderMind provider directory</td><td class="num">~5-10%</td><td>Highest in pregnancy/postpartum category</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SECTION 7: AREAS FOR EXPLORATION -->
+<div class="section">
+  <h2><span class="section-num">07</span> Areas for Exploration</h2>
+  <p class="section-desc">Based on what users are discussing, these are areas where the AI coach could potentially add value in the future. Each would require further analysis, clinical review, and product design work.</p>
+
+  <table>
+    <thead>
+      <tr><th>Signal Observed</th><th>Potential Future Application</th><th>Who Benefits</th><th class="num">Est. Users</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>User describes weight-anxiety connection</td><td>Surface weight management or nutrition benefits</td><td>Payors, Employers</td><td class="num">95</td></tr>
+      <tr><td>User discusses chronic pain + mental health</td><td>Integrated behavioral health + PT coordination</td><td>Health Systems</td><td class="num">169</td></tr>
+      <tr><td>User mentions pregnancy/postpartum distress</td><td>Maternal mental health screening, perinatal referrals</td><td>Health Systems, Payors</td><td class="num">104</td></tr>
+      <tr><td>User describes active cravings or relapse risk</td><td>Peer recovery support, crisis resources, MAT info</td><td>Health Systems, Payors</td><td class="num">229</td></tr>
+      <tr><td>User discloses cancer diagnosis or caregiving</td><td>Psycho-oncology referral, caregiver support</td><td>Health Systems</td><td class="num">69</td></tr>
+      <tr><td>User mentions diabetes/heart disease + distress</td><td>Chronic disease behavioral health integration</td><td>Payors</td><td class="num">90</td></tr>
+      <tr><td>User describes insomnia driving mental health decline</td><td>CBT-I program referral</td><td>Health Systems, Employers</td><td class="num">67</td></tr>
+      <tr><td>User wants to exercise but lacks energy (depression)</td><td>Behavioral activation, gym benefit surfacing</td><td>Employers</td><td class="num">319</td></tr>
+      <tr><td>User discloses medication non-compliance</td><td>Flag for care coordination / pharmacy outreach</td><td>Payors</td><td class="num">21-41</td></tr>
+      <tr><td>User discloses ER visit or hospitalization</td><td>Utilization management signal</td><td>Payors</td><td class="num">71-185</td></tr>
+      <tr><td>User mentions FMLA, missed work, disability leave</td><td>EAP / employer benefit surfacing</td><td>Employers</td><td class="num">80-150</td></tr>
+      <tr><td>User mentions financial barriers to care</td><td>Sliding scale, financial assistance programs</td><td>Health Systems</td><td class="num">~645</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <h4>Open questions before any of these could be implemented</h4>
+    Clinical appropriateness: should an AI coach surface benefits during emotional conversations? Privacy: what consent is needed to route signals to care managers? Accuracy: would real-time classification be reliable enough to act on? These are product, clinical, and legal questions -- not data questions.
+  </div>
+</div>
+
+<!-- SECTION 8: OPEN QUESTIONS -->
+<div class="section">
+  <h2><span class="section-num">08</span> Open Questions</h2>
+  <table>
+    <thead><tr><th>Question</th><th>Why It Matters</th></tr></thead>
+    <tbody>
+      <tr><td>Is the correlation between physical health mentions and session count causal, or survivorship bias?</td><td>If it's bias, these users aren't stickier -- they just have more text. First-session mention analysis would clarify.</td></tr>
+      <tr><td>Are the comorbidity lift values stable?</td><td>Small sample sizes (8-38 co-occurrences for some pairs) mean lift values could shift with new data.</td></tr>
+      <tr><td>What does the bot do well that we're not measuring?</td><td>Empathic validation may be exactly right for some of these conversations. Not every mention needs a referral.</td></tr>
+      <tr><td>What do users actually want when they mention physical health?</td><td>We're inferring from text. User interviews would reveal whether they want resources, referrals, or just to be heard.</td></tr>
+      <tr><td>How would proactive benefit surfacing affect trust?</td><td>Users may feel surveilled if the coach starts recommending programs based on what they disclose.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  Source data: ai-coach-deep-analysis/data/analysis.duckdb | Classification: physical_health_contextual.json | Generated March 5, 2026
+</div>
+
+</div><!-- /container (report-content) -->
+
+<script>
+function checkPw() {
+  const input = document.getElementById('pw-input').value;
+  // Simple hash check so password isn't in plain text
+  if (simpleHash(input) === '2099f9aa') {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('report-content').style.display = 'block';
+    initCharts();
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0).toString(16);
+}
+
+</script>
+
+<script>
+function initCharts() {
+const ctx = document.getElementById('multiCatChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['1 category', '2 categories', '3 categories', '4+ categories'],
+    datasets: [{
+      data: [657, 158, 65, 56],
+      backgroundColor: ['#dbeafe', '#93c5fd', '#3b82f6', '#1d4ed8'],
+      borderRadius: 4,
+      barThickness: 40
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(ctx) {
+            const total = 936;
+            const pct = ((ctx.raw / total) * 100).toFixed(1);
+            return `${ctx.raw} users (${pct}%)`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 12 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 12 } } }
+    }
+  }
+});
+} // end initCharts
+</script>
+</body>
+</html>
